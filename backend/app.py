@@ -1,5 +1,5 @@
 from flask import Flask, render_template
-from backend.config import Config
+from .config import Config
 from backend.services.gemini_service import GeminiService
 from dotenv import load_dotenv
 import os
