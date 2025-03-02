@@ -1,26 +1,63 @@
+tracker/frontend/templates/login.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Nutrient Tracker</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <title>Login | Nutrition Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h2>Login</h2>
-        <form action="{{ url_for('auth.login') }}" method="POST">
+    <div class="auth-container">
+        <h1>Login</h1>
+        <div id="error-message" class="error" style="display: none;"></div>
+        
+        <form id="login-form">
             <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
             </div>
+            
             <div class="form-group">
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            <button type="submit">Login</button>
+            
+            <button type="submit" class="btn">Login</button>
         </form>
-        <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a></p>
+        
+        <p>Don't have an account? <a href="/register">Register</a></p>
     </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#login-form').on('submit', function(e) {
+                e.preventDefault();
+                
+                const email = $('#email').val().trim();
+                const password = $('#password').val().trim();
+                
+                $.ajax({
+                    url: '/api/login',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ email, password }),
+                    success: function(response) {
+                        // Store token in localStorage
+                        localStorage.setItem('userToken', response.user.token);
+                        localStorage.setItem('username', response.user.username);
+                        
+                        // Redirect to main page
+                        window.location.href = '/';
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : 'Login failed';
+                        $('#error-message').text(errorMsg).show();
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

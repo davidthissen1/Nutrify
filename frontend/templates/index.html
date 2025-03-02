@@ -1,15 +1,17 @@
+frontend/templates/index.html -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nutrify - Food Nutrition Analyzer</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <title>Nutrient Analyzer</title>
 </head>
 <body>
-    <nav class="main-nav">
+    <nav class="navbar">
         <div class="nav-container">
-            <div class="logo">
+            <div class="logo-container">
                 <img src="{{ url_for('static', filename='nutrify_logo.png') }}" alt="Nutrify" class="logo-img">
                 <span class="logo-text">Nutrify</span>
             </div>
@@ -30,48 +32,25 @@
         <h1>Nutrient Analyzer</h1>
         
         <div class="tabs">
-            <button class="tab-btn active" data-tab="text">Text Description</button>
-            <button class="tab-btn" data-tab="camera">Use Camera</button>
-            <button class="tab-btn" data-tab="upload">Upload Image</button>
+            <button class="tab active" data-tab="text-tab">Text Description</button>
+            <button class="tab" data-tab="upload-tab">Upload Image</button>
         </div>
         
         <!-- Text Analysis Section -->
-        <div class="tab-content active" id="text-tab">
+        <div class="tab-content" id="text-tab">
             <div class="analysis-section">
                 <h2>Describe Your Food</h2>
-                <div class="text-input">
+                <form id="text-form" class="text-input">
                     <textarea id="food-description" placeholder="Describe the food you want to analyze (e.g., 'grilled chicken breast with steamed broccoli')"></textarea>
                     <div class="text-button-container">
-                        <button id="analyze-text-btn">Analyze Text</button>
+                        <button type="button" id="analyze-text-btn">Analyze Text</button>
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Camera Section -->
-        <div class="tab-content" id="camera-tab">
-            <div class="analysis-section">
-                <h2>Take a Photo of Your Food</h2>
-                <div class="camera-container">
-                    <video id="video" autoplay playsinline></video>
-                    <canvas id="canvas" style="display: none;"></canvas>
-                    <div class="camera-controls">
-                        <button id="flip-camera">Flip Camera</button>
-                        <button id="capture-btn">Take Photo</button>
-                    </div>
-                </div>
-                <div class="preview-container" style="display: none;">
-                    <img id="camera-preview" src="#" alt="Preview">
-                    <div class="preview-controls">
-                        <button id="retake-btn">Retake</button>
-                        <button id="analyze-camera-btn">Analyze</button>
-                    </div>
-                </div>
+                </form>
             </div>
         </div>
         
         <!-- Upload Section -->
-        <div class="tab-content" id="upload-tab">
+        <div class="tab-content" id="upload-tab" style="display: none;">
             <div class="analysis-section">
                 <h2>Upload Food Image</h2>
                 <div class="upload-container">
@@ -89,9 +68,6 @@
             <h2>Nutritional Information</h2>
             <div id="loading" style="display: none;">
                 <div class="loader"></div>
-            </div>
-            <div id="loading" style="display: none;">
-                <div class="loader"></div>
                 <div class="loading-text">Analyzing your food... Please wait</div>
             </div> 
             <div id="results" class="results-content"></div>
@@ -99,6 +75,7 @@
         </div>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{{ url_for('static', filename='js/food_analysis.js') }}"></script>
 </body>
 </html>

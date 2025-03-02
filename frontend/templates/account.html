@@ -1,3 +1,4 @@
+Projects/nutrition-tracker/frontend/templates/account.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,6 +6,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <title>Account - Nutrient Tracker</title>
+    <style>
+        .auth-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .message {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .error {
+            background-color: #ffebee;
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+        .success {
+            background-color: #e8f5e9;
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+        }
+        .profile-info {
+            margin-top: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <nav class="main-nav">
@@ -24,76 +77,202 @@
     <div class="container">
         <h1>Your Account</h1>
         
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="profile">Profile</button>
-            <button class="tab-btn" data-tab="food-log">Food Log</button>
-            <button class="tab-btn" data-tab="goals">Nutrient Goals</button>
+        <div id="login-container" class="auth-container">
+            <div id="message-box" class="message hidden"></div>
+            
+            <div id="logged-out-view">
+                <h2>Sign In / Create Account</h2>
+                <form id="auth-form">
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="username">Username:</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password:</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    
+                    <button type="submit" class="btn" id="auth-button">Sign In / Register</button>
+                </form>
+            </div>
+            
+            <div id="logged-in-view" class="hidden">
+                <h2>Welcome, <span id="user-name"></span>!</h2>
+                <div class="profile-info">
+                    <p><strong>Email:</strong> <span id="user-email"></span></p>
+                </div>
+                <button id="logout-btn" class="btn">Log Out</button>
+            </div>
+        </div>
+        
+        <div class="tabs hidden" id="account-tabs">
+            
         </div>
         
         <!-- Profile Section -->
-        <div class="tab-content active" id="profile-tab">
-            <div class="account-section">
-                <h2>User Profile</h2>
-                <div class="profile-info">
-                    <div class="form-group">
-                        <label for="username">Username</label>
-                        <input type="text" id="username" placeholder="Enter your username">
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" placeholder="Enter your email">
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <input type="password" id="password" placeholder="Change your password">
-                    </div>
-                    <button id="save-profile-btn">Save Changes</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Food Log Section -->
-        <div class="tab-content" id="food-log-tab">
-            <div class="account-section">
-                <h2>Your Food Log</h2>
-                <div class="date-filter">
-                    <label for="log-date">Date:</label>
-                    <input type="date" id="log-date" value="{{ today }}">
-                </div>
-                <div id="food-log-container">
-                    <!-- Food log entries will be inserted here -->
-                    <p class="empty-message">No food entries found for this date.</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Goals Section -->
-        <div class="tab-content" id="goals-tab">
-            <div class="account-section">
-                <h2>Your Nutrient Goals</h2>
-                <div class="goals-form">
-                    <div class="form-group">
-                        <label for="goal-calories">Daily Calorie Goal</label>
-                        <input type="number" id="goal-calories" placeholder="e.g., 2000">
-                    </div>
-                    <div class="form-group">
-                        <label for="goal-protein">Protein (g)</label>
-                        <input type="number" id="goal-protein" placeholder="e.g., 50">
-                    </div>
-                    <div class="form-group">
-                        <label for="goal-carbs">Carbohydrates (g)</label>
-                        <input type="number" id="goal-carbs" placeholder="e.g., 300">
-                    </div>
-                    <div class="form-group">
-                        <label for="goal-fat">Fat (g)</label>
-                        <input type="number" id="goal-fat" placeholder="e.g., 70">
-                    </div>
-                    <button id="save-goals-btn">Save Goals</button>
-                </div>
-            </div>
+        <div class="tab-content hidden" id="profile-tab">
+            <!-- Profile tab content will be shown after login -->
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/account.js') }}"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Check if user is already logged in
+            const userToken = localStorage.getItem('userToken');
+            if (userToken) {
+                fetchUserData(userToken);
+            }
+            
+            // Handle form submission for login/register
+            $('#auth-form').on('submit', function(e) {
+                e.preventDefault();
+                
+                const email = $('#email').val().trim();
+                const username = $('#username').val().trim();
+                const password = $('#password').val().trim();
+                
+                // First try to login
+                loginUser(email, password, username);
+            });
+            
+            // Handle logout
+            $('#logout-btn').on('click', function() {
+                localStorage.removeItem('userToken');
+                localStorage.removeItem('username');
+                showLoginView();
+                showMessage('You have been logged out successfully.', 'success');
+            });
+            
+            // Tab functionality
+            $('.tab-btn').on('click', function() {
+                const tabId = $(this).data('tab') + '-tab';
+                
+                $('.tab-btn').removeClass('active');
+                $(this).addClass('active');
+                
+                $('.tab-content').removeClass('active');
+                $('#' + tabId).addClass('active');
+            });
+            
+            function loginUser(email, password, username) {
+                $.ajax({
+                    url: '/api/login',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ email, password }),
+                    success: function(response) {
+                        handleSuccessfulAuth(response);
+                    },
+                    error: function(xhr) {
+                        // If login fails, try to register
+                        if (xhr.status === 401) {
+                            registerUser(email, username, password);
+                        } else {
+                            const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : 'Authentication failed';
+                            showMessage(errorMsg, 'error');
+                        }
+                    }
+                });
+            }
+            
+            function registerUser(email, username, password) {
+                $.ajax({
+                    url: '/api/register',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ email, username, password }),
+                    success: function(response) {
+                        // After registration, try to login
+                        loginUser(email, password, username);
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : 'Registration failed';
+                        showMessage(errorMsg, 'error');
+                    }
+                });
+            }
+            
+            function fetchUserData(token) {
+    $.ajax({
+        url: '/api/user',
+        type: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + token
+        },
+        success: function(response) {
+            // Display user data
+            $('#user-name').text(response.username);
+            $('#user-email').text(response.email);
+            
+            // Handle created_at date - check if it exists first
+            if (response.created_at) {
+                try {
+                    const date = new Date(response.created_at);
+                    if (!isNaN(date.getTime())) {
+                        $('#user-created').text(date.toLocaleDateString());
+                    } else {
+                        $('#user-created').text('Account information not available');
+                    }
+                } catch (e) {
+                    $('#user-created').text('Account information not available');
+                }
+            } else {
+                $('#user-created').text('Account information not available');
+            }
+            
+            showLoggedInView();
+        },
+        error: function() {
+            // Token might be invalid, show login form
+            localStorage.removeItem('userToken');
+            showLoginView();
+        }
+    });
+}
+            function handleSuccessfulAuth(response) {
+                // Store token in localStorage
+                localStorage.setItem('userToken', response.user.token);
+                localStorage.setItem('username', response.user.username);
+                
+                showMessage('Authentication successful!', 'success');
+                
+                // Fetch and display user data
+                fetchUserData(response.user.token);
+            }
+            
+            function showLoggedInView() {
+                $('#logged-out-view').addClass('hidden');
+                $('#logged-in-view').removeClass('hidden');
+                $('#account-tabs').removeClass('hidden');
+                $('#profile-tab').removeClass('hidden');
+            }
+            
+            function showLoginView() {
+                $('#logged-in-view').addClass('hidden');
+                $('#logged-out-view').removeClass('hidden');
+                $('#account-tabs').addClass('hidden');
+                $('#profile-tab').addClass('hidden');
+            }
+            
+            function showMessage(message, type) {
+                const $messageBox = $('#message-box');
+                $messageBox.removeClass('hidden error success');
+                $messageBox.addClass(type);
+                $messageBox.text(message);
+                
+                // Auto-hide after 5 seconds
+                setTimeout(function() {
+                    $messageBox.addClass('hidden');
+                }, 5000);
+            }
+        });
+    </script>
 </body>
 </html>

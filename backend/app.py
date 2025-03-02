@@ -1,6 +1,6 @@
 from flask import Flask, render_template
-from .config import Config
-from backend.services.gemini_service import GeminiService
+from .config import Config  # Use relative import
+from .services.gemini_service import GeminiService  # Use relative import
 from dotenv import load_dotenv
 import os
 
@@ -28,16 +28,11 @@ def create_app():
     gemini_service = GeminiService(api_key)
     gemini_service.test_api_key()
     
-    # Import and register only the food routes blueprint
-    from backend.routes.food_routes import food_routes
-    app.register_blueprint(food_routes)
+    # Import and register blueprints
+    from .routes.food_routes import food_routes
+    from .routes.user_routes import user_routes
     
-    @app.route('/')
-    def index():
-        return render_template('index.html')
+    app.register_blueprint(food_routes)
+    app.register_blueprint(user_routes)
     
     return app
-
-if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True)
