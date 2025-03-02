@@ -237,53 +237,162 @@ function displayResults(data) {
 /**
  * Format nutrition data into HTML
  */
+/**
+ * Format nutrition data into HTML
+ */
 function formatNutritionData(data) {
-    let html = '<div class="result-container">';
-    
-    // Add food name as title
-    html += `<h3 class="result-title">${data.food_name || 'Food Analysis'}</h3>`;
-    
-    if (data.portion_size) {
-        html += `<p class="portion-size">Portion: ${data.portion_size}</p>`;
-    }
-    
-    // Main macronutrients
-    html += '<div class="macros-container">';
-    html += createMacroElement('Calories', data.calories, '');
-    html += createMacroElement('Protein', extractNumber(data.protein), 'g');
-    html += createMacroElement('Carbs', extractNumber(data.carbohydrates || data.carbs), 'g');
-    html += createMacroElement('Fat', extractNumber(data.fat || data.fats), 'g');
-    html += '</div>';
-    
-    // Additional nutrients if available
-    if (data.fiber) {
-        html += `<p class="additional-nutrient"><span>Fiber:</span> ${data.fiber}</p>`;
-    }
-    
-    // Vitamins and minerals
-    if (data.vitamins_and_minerals && Object.keys(data.vitamins_and_minerals).length > 0) {
-        html += '<div class="vitamins-minerals">';
-        html += '<h4>Vitamins & Minerals</h4>';
-        html += '<ul>';
-        
-        for (const [key, value] of Object.entries(data.vitamins_and_minerals)) {
-            const formattedName = formatNutrientName(key);
-            html += `<li><span>${formattedName}:</span> ${value}</li>`;
+    try {
+        // If data is a string (like JSON), parse it
+        if (typeof data === 'string') {
+            // Remove markdown formatting if present
+            if (data.includes('```')) {
+                data = data.replace(/```json|```/g, '').trim();
+            }
+            data = JSON.parse(data);
         }
         
-        html += '</ul></div>';
+        // Extract the main values
+        const foodName = data.food_name || 'Food Analysis';
+        const calories = extractNumber(data.calories) || 0;
+        const protein = extractNumber(data.protein) || 0;
+        const carbs = extractNumber(data.carbohydrates || data.carbs) || 0;
+        const fat = extractNumber(data.fat || data.fats) || 0;
+        const portionSize = data.portion_size || 'Standard serving';
+        
+        // Build HTML with appropriate animation classes
+        let html = '<div class="nutrition-card">';
+        
+        // Food name and portion size
+        html += `<h3 class="food-name">${foodName}</h3>`;
+        html += `<p class="portion-size">${portionSize}</p>`;
+        
+        // Calories section
+        html += `
+            <div class="calories-section">
+                <div class="calories-label">Calories</div>
+                <div class="calories-value">${calories}</div>
+            </div>
+        `;
+        
+        // Macronutrients section
+        html += `<h3>Macronutrients</h3>`;
+        html += '<div class="macro-section">';
+        html += '<div class="macro-list">';
+        
+        // Protein
+        html += `
+            <div class="macro-item">
+                <div class="macro-label">Protein</div>
+                <div class="macro-value">${protein}g</div>
+            </div>
+        `;
+        
+        // Carbs
+        html += `
+            <div class="macro-item">
+                <div class="macro-label">Carbs</div>
+                <div class="macro-value">${carbs}g</div>
+            </div>
+        `;
+        
+        // Fat
+        html += `
+            <div class="macro-item">
+                <div class="macro-label">Fat</div>
+                <div class="macro-value">${fat}g</div>
+            </div>
+        `;
+        
+        // Add fiber if available
+        if (data.fiber) {
+            html += `
+                <div class="macro-item">
+                    <div class="macro-label">Fiber</div>
+                    <div class="macro-value">${extractNumber(data.fiber)}g</div>
+                </div>
+            `;
+        }
+        
+        // Close macro list and section
+        html += '</div>'; // close macro-list
+        html += '</div>'; // close macro-section
+        
+        // Vitamins and minerals section if available
+        if (data.vitamins_and_minerals && Object.keys(data.vitamins_and_minerals).length > 0) {
+            html += `<h3>Vitamins & Minerals</h3>`;
+            html += '<div class="micros-section">';
+            html += '<div class="micro-list">';
+            
+            // Add each micronutrient (limit to 6 to avoid cluttering)
+            let count = 0;
+            for (const [key, value] of Object.entries(data.vitamins_and_minerals)) {
+                if (count < 6 && value) {  // Only show if value exists
+                    const formattedName = formatNutrientName(key);
+                    html += `
+                        <div class="micro-item">
+                            <div class="micro-label">${formattedName}</div>
+                            <div class="micro-value">${value}</div>
+                        </div>
+                    `;
+                    count++;
+                }
+            }
+            
+            html += '</div>'; // close micro-list
+            html += '</div>'; // close micros-section
+        }
+        
+        // Allergens if available
+        if (data.potential_allergens && data.potential_allergens.length > 0) {
+            html += '<div class="allergens-section">';
+            html += '<h3>Potential Allergens</h3>';
+            html += '<div class="allergens-list">';
+            
+            for (const allergen of data.potential_allergens) {
+                html += `<div class="allergen-item">${allergen}</div>`;
+            }
+            
+            html += '</div>'; // close allergens-list
+            html += '</div>'; // close allergens-section
+        }
+        
+        // Health assessment if available
+        if (data.health_assessment || data.health_notes) {
+            html += '<div class="health-assessment-section">';
+            html += '<h3>Health Notes</h3>';
+            html += '<div class="health-assessment-content">';
+            html += `<p>${data.health_assessment || data.health_notes}</p>`;
+            html += '</div>'; // close health-assessment-content
+            html += '</div>'; // close health-assessment-section
+        }
+        
+        html += '</div>'; // close nutrition-card
+        
+        return html;
+    } catch (e) {
+        console.error('Error formatting nutrition data:', e);
+        return `<div class="error">Error formatting results: ${e.message}</div>`;
     }
+}
+
+/**
+ * Format nutrient name for display
+ */
+function formatNutrientName(name) {
+    return name
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, l => l.toUpperCase());
+}
+
+/**
+ * Extract numeric value from string (e.g. "15g" -> 15)
+ */
+function extractNumber(value) {
+    if (!value) return 0;
+    if (typeof value === 'number') return value;
     
-    // Allergens if available
-    if (data.potential_allergens && data.potential_allergens.length > 0) {
-        html += '<div class="allergens">';
-        html += '<h4>Potential Allergens</h4>';
-        html += '<p>' + data.potential_allergens.join(', ') + '</p>';
-        html += '</div>';
-    }
-    
-    html += '</div>';
-    return html;
+    const matches = String(value).match(/[\d.]+/);
+    return matches ? parseFloat(matches[0]) : 0;
 }
 
 /**
