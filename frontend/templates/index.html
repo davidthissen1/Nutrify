@@ -33,6 +33,7 @@ frontend/templates/index.html -->
         
         <div class="tabs">
             <button class="tab active" data-tab="text-tab">Text Description</button>
+            <button class="tab" data-tab="camera-tab">Take Photo</button>
             <button class="tab" data-tab="upload-tab">Upload Image</button>
         </div>
         
@@ -46,6 +47,24 @@ frontend/templates/index.html -->
                         <button type="button" id="analyze-text-btn">Analyze Text</button>
                     </div>
                 </form>
+            </div>
+        </div>
+        
+        <!-- Camera Section -->
+        <div class="tab-content" id="camera-tab" style="display: none;">
+            <div class="analysis-section">
+                <h2>Take Food Photo</h2>
+                <div class="camera-container">
+                    <video id="camera-preview" autoplay playsinline></video>
+                    <canvas id="camera-canvas" style="display: none;"></canvas>
+                    <img id="camera-output" style="display: none;">
+                    <div class="camera-buttons">
+                        <button id="start-camera">Start Camera</button>
+                        <button id="capture-photo" style="display: none;">Take Photo</button>
+                        <button id="retake-photo" style="display: none;">Retake</button>
+                        <button id="analyze-camera-btn" style="display: none;">Analyze Photo</button>
+                    </div>
+                </div>
             </div>
         </div>
         

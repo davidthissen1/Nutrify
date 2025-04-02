@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize text analysis
     initTextAnalysis();
     
+    // Initialize camera functionality
+    initCamera();
+    
     // Initialize image upload
     initImageUpload();
 });
@@ -110,6 +113,148 @@ function initTextAnalysis() {
             console.error('Analysis error:', error);
         });
     }
+}
+
+/**
+ * Initialize camera functionality
+ */
+function initCamera() {
+    const videoElement = document.getElementById('camera-preview');
+    const canvasElement = document.getElementById('camera-canvas');
+    const imageElement = document.getElementById('camera-output');
+    const startButton = document.getElementById('start-camera');
+    const captureButton = document.getElementById('capture-photo');
+    const retakeButton = document.getElementById('retake-photo');
+    const analyzeButton = document.getElementById('analyze-camera-btn');
+    
+    let stream = null;
+    
+    if (!videoElement || !canvasElement || !startButton || !captureButton || !retakeButton || !analyzeButton) {
+        console.log('Camera elements not found');
+        return;
+    }
+    
+    // Start camera button click handler
+    startButton.addEventListener('click', async function() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' },
+                audio: false
+            });
+            
+            videoElement.srcObject = stream;
+            videoElement.style.display = 'block';
+            startButton.style.display = 'none';
+            captureButton.style.display = 'inline-block';
+            imageElement.style.display = 'none';
+            retakeButton.style.display = 'none';
+            analyzeButton.style.display = 'none';
+        } catch (err) {
+            console.error('Error accessing camera:', err);
+            alert('Error accessing camera. Please make sure you have granted camera permissions.');
+        }
+    });
+    
+    // Capture photo button click handler
+    captureButton.addEventListener('click', function() {
+        // Set canvas dimensions to match video
+        canvasElement.width = videoElement.videoWidth;
+        canvasElement.height = videoElement.videoHeight;
+        
+        // Draw video frame to canvas
+        const context = canvasElement.getContext('2d');
+        context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+        
+        // Convert canvas to image
+        const imageDataUrl = canvasElement.toDataURL('image/jpeg');
+        imageElement.src = imageDataUrl;
+        
+        // Stop video stream and hide video element
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        videoElement.style.display = 'none';
+        imageElement.style.display = 'block';
+        captureButton.style.display = 'none';
+        retakeButton.style.display = 'inline-block';
+        analyzeButton.style.display = 'inline-block';
+    });
+    
+    // Retake photo button click handler
+    retakeButton.addEventListener('click', async function() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' },
+                audio: false
+            });
+            
+            videoElement.srcObject = stream;
+            videoElement.style.display = 'block';
+            imageElement.style.display = 'none';
+            retakeButton.style.display = 'none';
+            analyzeButton.style.display = 'none';
+            captureButton.style.display = 'inline-block';
+        } catch (err) {
+            console.error('Error accessing camera:', err);
+            alert('Error accessing camera. Please make sure you have granted camera permissions.');
+        }
+    });
+    
+    // Analyze photo button click handler
+    analyzeButton.addEventListener('click', function() {
+        // Show loading indicator
+        showLoading();
+        
+        // Convert base64 image to blob
+        fetch(imageElement.src)
+            .then(res => res.blob())
+            .then(blob => {
+                const formData = new FormData();
+                formData.append('image', blob, 'camera-photo.jpg');
+                
+                // Send to backend for analysis
+                return fetch('/api/food/analyze-image', {
+                    method: 'POST',
+                    body: formData
+                });
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Server error: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                hideLoading();
+                
+                if (data.success) {
+                    displayResults(data.data);
+                } else {
+                    showError(data.error || 'Failed to analyze image');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                showError('Error analyzing image: ' + error.message);
+                console.error('Analysis error:', error);
+            });
+    });
+    
+    // Clean up when switching tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            videoElement.srcObject = null;
+            videoElement.style.display = 'none';
+            imageElement.style.display = 'none';
+            startButton.style.display = 'inline-block';
+            captureButton.style.display = 'none';
+            retakeButton.style.display = 'none';
+            analyzeButton.style.display = 'none';
+        });
+    });
 }
 
 /**
@@ -234,9 +379,6 @@ function displayResults(data) {
     }
 }
 
-/**
- * Format nutrition data into HTML
- */
 /**
  * Format nutrition data into HTML
  */
@@ -406,26 +548,6 @@ function createMacroElement(name, value, unit) {
             <div class="macro-unit">${unit}</div>
         </div>
     `;
-}
-
-/**
- * Format nutrient name for display
- */
-function formatNutrientName(name) {
-    return name
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, l => l.toUpperCase());
-}
-
-/**
- * Extract numeric value from string (e.g. "15g" -> 15)
- */
-function extractNumber(value) {
-    if (!value) return 0;
-    if (typeof value === 'number') return value;
-    
-    const matches = String(value).match(/[\d.]+/);
-    return matches ? parseFloat(matches[0]) : 0;
 }
 
 /**
