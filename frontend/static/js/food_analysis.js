@@ -477,6 +477,21 @@ function saveToFoodLog() {
         })
         .then(data => {
             showMessage('Food saved to your log successfully!', 'success');
+            
+            // Dispatch custom event for dashboard update
+            const event = new CustomEvent('foodLogUpdated', {
+                detail: {
+                    foodLogData: foodLogData
+                }
+            });
+            window.dispatchEvent(event);
+            
+            // Optionally refresh the page if we're on the dashboard
+            if (window.location.pathname.includes('dashboard')) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            }
         })
         .catch(error => {
             showError('Error: ' + error.message);

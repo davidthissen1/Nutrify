@@ -233,6 +233,9 @@ def food_logs():
             
         # For GET requests (fetching food logs)
         else:
+            # Get date parameter from request
+            selected_date = request.args.get('date')
+            
             # Construct the query based on available columns
             name_column = 'name' if 'name' in columns else 'food_name'
             protein_column = 'protein' if 'protein' in columns else 'protein_g'
@@ -240,7 +243,7 @@ def food_logs():
             fats_column = 'fats' if 'fats' in columns else 'fat_g'
             date_column = 'date_added' if 'date_added' in columns else 'log_date'
             
-            # Build the select query with the correct column names
+            # Build the select query with the correct column names and date filtering
             query = f"""
                 SELECT id, 
                        {name_column} AS food_name, 
@@ -249,31 +252,37 @@ def food_logs():
                        {carbs_column} AS carbs_g, 
                        {fats_column} AS fat_g, 
                        {date_column} AS log_date
-                FROM food_logs
+                FROM food_logs 
                 WHERE user_id = %s
-                ORDER BY {date_column} DESC
             """
             
-            print(f"Executing query: {query}")
-            cur.execute(query, (user_id,))
+            query_params = [user_id]
             
-            logs = []
-            for row in cur.fetchall():
-                log_data = {
-                    'id': row[0],
-                    'food_name': row[1] if row[1] else 'Unknown Food',
-                    'calories': row[2] if row[2] is not None else 0,
-                    'protein_g': row[3] if row[3] is not None else 0,
-                    'carbs_g': row[4] if row[4] is not None else 0,
-                    'fat_g': row[5] if row[5] is not None else 0
+            # Add date filtering if a date was provided
+            if selected_date:
+                query += f" AND DATE({date_column}) = %s"
+                query_params.append(selected_date)
+            
+            query += " ORDER BY log_date DESC"
+            
+            cur.execute(query, query_params)
+            logs = cur.fetchall()
+            
+            # Convert to list of dictionaries
+            log_list = []
+            for log in logs:
+                log_dict = {
+                    'id': log[0],
+                    'food_name': log[1],
+                    'calories': log[2],
+                    'protein_g': log[3],
+                    'carbs_g': log[4],
+                    'fat_g': log[5],
+                    'log_date': log[6].isoformat() if log[6] else None
                 }
-                
-                if len(row) > 6 and row[6]:
-                    log_data['log_date'] = row[6].isoformat()
-                
-                logs.append(log_data)
+                log_list.append(log_dict)
             
-            return jsonify({'logs': logs})
+            return jsonify({'logs': log_list}), 200
             
     except Exception as e:
         import traceback

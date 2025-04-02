@@ -7,6 +7,18 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Dashboard JS loaded');
     
+    // Initialize date picker with today's date
+    const dateInput = document.getElementById('dashboard-date');
+    if (dateInput) {
+        const today = new Date();
+        dateInput.value = today.toISOString().split('T')[0];
+        
+        // Add event listener for date changes
+        dateInput.addEventListener('change', function() {
+            initFoodLogsDisplay();
+        });
+    }
+    
     // Initialize all dashboard components
     initFoodAnalysis();
     initFoodLogsDisplay();
@@ -166,6 +178,7 @@ function formatNutrientName(name) {
  */
 function saveFoodToLog(data) {
     const userToken = localStorage.getItem('userToken');
+    const dateInput = document.getElementById('dashboard-date');
     
     if (!userToken) {
         alert('You must be logged in to save to your food log');
@@ -179,7 +192,7 @@ function saveFoodToLog(data) {
         protein_g: extractNumber(data.protein),
         carbs_g: extractNumber(data.carbohydrates || data.carbs),
         fat_g: extractNumber(data.fat || data.fats),
-        log_date: new Date().toISOString()
+        log_date: dateInput ? dateInput.value : new Date().toISOString().split('T')[0]
     };
     
     console.log('Saving food data:', foodLogData);
@@ -215,6 +228,7 @@ function saveFoodToLog(data) {
  */
 function initFoodLogsDisplay() {
     const logContainer = document.getElementById('food-logs-container');
+    const dateInput = document.getElementById('dashboard-date');
     
     if (!logContainer) {
         // Container doesn't exist on this page
@@ -231,8 +245,25 @@ function initFoodLogsDisplay() {
     // Show loading state
     logContainer.innerHTML = '<p>Loading your food logs...</p>';
     
+    // Get selected date
+    const selectedDate = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+    
+    // Reset consumed values when changing dates
+    const caloriesConsumed = document.getElementById('calories-consumed');
+    const proteinConsumed = document.getElementById('protein-consumed');
+    const carbsConsumed = document.getElementById('carbs-consumed');
+    const fatConsumed = document.getElementById('fat-consumed');
+    
+    if (caloriesConsumed) caloriesConsumed.value = '0';
+    if (proteinConsumed) proteinConsumed.value = '0';
+    if (carbsConsumed) carbsConsumed.value = '0';
+    if (fatConsumed) fatConsumed.value = '0';
+    
+    // Update progress bars with reset values
+    updateProgressBars();
+    
     // Fetch food logs
-    fetch('/api/food-logs', {
+    fetch(`/api/food-logs?date=${selectedDate}`, {
         method: 'GET',
         headers: {
             'Authorization': 'Bearer ' + userToken
@@ -245,7 +276,14 @@ function initFoodLogsDisplay() {
         return response.json();
     })
     .then(data => {
-        displayFoodLogs(data.logs, logContainer);
+        // Filter logs for the selected date
+        const filteredLogs = data.logs.filter(log => {
+            const logDate = new Date(log.log_date);
+            const compareDate = new Date(selectedDate);
+            return logDate.toISOString().split('T')[0] === compareDate.toISOString().split('T')[0];
+        });
+        
+        displayFoodLogs(filteredLogs, logContainer);
     })
     .catch(error => {
         logContainer.innerHTML = `<p class="error">Error: ${error.message}</p>`;
@@ -258,7 +296,7 @@ function initFoodLogsDisplay() {
  */
 function displayFoodLogs(logs, container) {
     if (!logs || logs.length === 0) {
-        container.innerHTML = '<p>No food logs yet. Analyze some food and save it to your log!</p>';
+        container.innerHTML = '<p>No food logs for this date. Analyze some food and save it to your log!</p>';
         return;
     }
     
@@ -268,6 +306,7 @@ function displayFoodLogs(logs, container) {
     html += '</tr></thead><tbody>';
     
     logs.forEach(log => {
+        // Format the date for display
         const date = log.log_date ? new Date(log.log_date).toLocaleDateString() : 'N/A';
         
         html += '<tr>';
@@ -283,7 +322,7 @@ function displayFoodLogs(logs, container) {
     html += '</tbody></table>';
     container.innerHTML = html;
     
-    // Add totals row
+    // Add totals row and update nutrition tracking
     addTotalsRow(logs, container);
 }
 
@@ -338,39 +377,93 @@ function addTotalsRow(logs, container) {
 }
 
 /**
- * Initialize nutrition tracking UI
+ * Initialize nutrition tracking
  */
 function initNutritionTracking() {
-    // Find all nutrition tracking inputs
-    const inputs = {
-        caloriesGoal: document.getElementById('caloriesGoal'),
-        proteinGoal: document.getElementById('proteinGoal'),
-        carbsGoal: document.getElementById('carbsGoal'),
-        fatGoal: document.getElementById('fatGoal')
-    };
-    
-    // Check if any inputs exist on this page
-    const hasInputs = Object.values(inputs).some(el => el !== null);
-    if (!hasInputs) return;
-    
     // Load saved goals from localStorage
-    const savedGoals = JSON.parse(localStorage.getItem('nutritionGoals') || '{}');
+    loadSavedGoals();
     
-    // Set input values from saved goals
-    if (inputs.caloriesGoal) inputs.caloriesGoal.value = savedGoals.calories || 2000;
-    if (inputs.proteinGoal) inputs.proteinGoal.value = savedGoals.protein || 50;
-    if (inputs.carbsGoal) inputs.carbsGoal.value = savedGoals.carbs || 250;
-    if (inputs.fatGoal) inputs.fatGoal.value = savedGoals.fat || 70;
-    
-    // Add event listeners to save changes
-    Object.values(inputs).forEach(input => {
-        if (input) {
-            input.addEventListener('change', saveNutritionGoals);
+    // Add event listener for food log updates
+    window.addEventListener('foodLogUpdated', function(event) {
+        const foodLogData = event.detail.foodLogData;
+        
+        // Update consumed values
+        const caloriesConsumed = document.getElementById('calories-consumed');
+        const proteinConsumed = document.getElementById('protein-consumed');
+        const carbsConsumed = document.getElementById('carbs-consumed');
+        const fatConsumed = document.getElementById('fat-consumed');
+        
+        if (caloriesConsumed) {
+            const currentCalories = parseFloat(caloriesConsumed.value) || 0;
+            caloriesConsumed.value = currentCalories + foodLogData.calories;
         }
+        
+        if (proteinConsumed) {
+            const currentProtein = parseFloat(proteinConsumed.value) || 0;
+            proteinConsumed.value = currentProtein + foodLogData.protein_g;
+        }
+        
+        if (carbsConsumed) {
+            const currentCarbs = parseFloat(carbsConsumed.value) || 0;
+            carbsConsumed.value = currentCarbs + foodLogData.carbs_g;
+        }
+        
+        if (fatConsumed) {
+            const currentFat = parseFloat(fatConsumed.value) || 0;
+            fatConsumed.value = currentFat + foodLogData.fat_g;
+        }
+        
+        // Update progress bars
+        updateProgressBars();
+        
+        // Refresh food logs display
+        initFoodLogsDisplay();
     });
     
-    // Initialize progress bars
+    // Initialize input event listeners for manual updates
+    const nutritionInputs = document.querySelectorAll('input[type="number"]');
+    nutritionInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            updateProgressBars();
+        });
+    });
+    
+    // Add event listener for Save Changes button
+    const saveButton = document.getElementById('save-nutrition');
+    if (saveButton) {
+        saveButton.addEventListener('click', saveNutritionGoals);
+    }
+    
+    // Initial update of progress bars
     updateProgressBars();
+}
+
+/**
+ * Load saved nutrition goals from localStorage
+ */
+function loadSavedGoals() {
+    const savedGoals = localStorage.getItem('nutritionGoals');
+    if (savedGoals) {
+        try {
+            const goals = JSON.parse(savedGoals);
+            
+            // Set the values in the input fields
+            const caloriesGoal = document.getElementById('calories-goal');
+            const proteinGoal = document.getElementById('protein-goal');
+            const carbsGoal = document.getElementById('carbs-goal');
+            const fatGoal = document.getElementById('fat-goal');
+            
+            if (caloriesGoal && goals.calories) caloriesGoal.value = goals.calories;
+            if (proteinGoal && goals.protein) proteinGoal.value = goals.protein;
+            if (carbsGoal && goals.carbs) carbsGoal.value = goals.carbs;
+            if (fatGoal && goals.fat) fatGoal.value = goals.fat;
+            
+            // Update progress bars with loaded goals
+            updateProgressBars();
+        } catch (error) {
+            console.error('Error loading saved goals:', error);
+        }
+    }
 }
 
 /**
@@ -378,13 +471,41 @@ function initNutritionTracking() {
  */
 function saveNutritionGoals() {
     const goals = {
-        calories: parseFloat(document.getElementById('caloriesGoal')?.value) || 2000,
-        protein: parseFloat(document.getElementById('proteinGoal')?.value) || 50,
-        carbs: parseFloat(document.getElementById('carbsGoal')?.value) || 250,
-        fat: parseFloat(document.getElementById('fatGoal')?.value) || 70
+        calories: parseFloat(document.getElementById('calories-goal')?.value) || 2000,
+        protein: parseFloat(document.getElementById('protein-goal')?.value) || 50,
+        carbs: parseFloat(document.getElementById('carbs-goal')?.value) || 250,
+        fat: parseFloat(document.getElementById('fat-goal')?.value) || 70
     };
     
+    // Save to localStorage
     localStorage.setItem('nutritionGoals', JSON.stringify(goals));
+    
+    // Show success message
+    const message = document.createElement('div');
+    message.className = 'success-message';
+    message.textContent = 'Goals saved successfully!';
+    message.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        z-index: 1000;
+        opacity: 1;
+        transition: opacity 0.5s ease-in-out;
+    `;
+    
+    document.body.appendChild(message);
+    
+    // Remove the message after 3 seconds
+    setTimeout(() => {
+        message.style.opacity = '0';
+        setTimeout(() => {
+            message.remove();
+        }, 500);
+    }, 3000);
     
     // Update progress bars with new goals
     updateProgressBars();
@@ -396,82 +517,76 @@ function saveNutritionGoals() {
 function updateNutritionTracking(totals) {
     if (!totals) return;
     
-    // Display consumed amounts in UI
-    const caloriesConsumed = document.getElementById('caloriesConsumed');
-    const proteinConsumed = document.getElementById('proteinConsumed');
-    const carbsConsumed = document.getElementById('carbsConsumed');
-    const fatConsumed = document.getElementById('fatConsumed');
+    // Update consumed values in input fields
+    const caloriesConsumed = document.getElementById('calories-consumed');
+    const proteinConsumed = document.getElementById('protein-consumed');
+    const carbsConsumed = document.getElementById('carbs-consumed');
+    const fatConsumed = document.getElementById('fat-consumed');
     
-    if (caloriesConsumed) caloriesConsumed.textContent = Math.round(totals.calories);
-    if (proteinConsumed) proteinConsumed.textContent = Math.round(totals.protein * 10) / 10;
-    if (carbsConsumed) carbsConsumed.textContent = Math.round(totals.carbs * 10) / 10;
-    if (fatConsumed) fatConsumed.textContent = Math.round(totals.fat * 10) / 10;
+    // Set the values directly from totals
+    if (caloriesConsumed) caloriesConsumed.value = Math.round(totals.calories);
+    if (proteinConsumed) proteinConsumed.value = Math.round(totals.protein * 10) / 10;
+    if (carbsConsumed) carbsConsumed.value = Math.round(totals.carbs * 10) / 10;
+    if (fatConsumed) fatConsumed.value = Math.round(totals.fat * 10) / 10;
     
-    // Update progress bars
-    updateProgressBars(totals);
+    // Update progress bars and text
+    updateProgressBars();
 }
 
 /**
  * Update progress bars for nutrition tracking
  */
-function updateProgressBars(totals = null) {
-    // Get saved goals
-    const savedGoals = JSON.parse(localStorage.getItem('nutritionGoals') || '{}');
-    
-    // Get default goals
-    const goals = {
-        calories: savedGoals.calories || 2000,
-        protein: savedGoals.protein || 50,
-        carbs: savedGoals.carbs || 250,
-        fat: savedGoals.fat || 70
+function updateProgressBars() {
+    // Get consumed values from input fields
+    const consumed = {
+        calories: parseFloat(document.getElementById('calories-consumed')?.value) || 0,
+        protein: parseFloat(document.getElementById('protein-consumed')?.value) || 0,
+        carbs: parseFloat(document.getElementById('carbs-consumed')?.value) || 0,
+        fat: parseFloat(document.getElementById('fat-consumed')?.value) || 0
     };
     
-    // If totals weren't passed, try to get them from the UI
-    if (!totals) {
-        totals = {
-            calories: parseFloat(document.getElementById('caloriesConsumed')?.textContent) || 0,
-            protein: parseFloat(document.getElementById('proteinConsumed')?.textContent) || 0,
-            carbs: parseFloat(document.getElementById('carbsConsumed')?.textContent) || 0,
-            fat: parseFloat(document.getElementById('fatConsumed')?.textContent) || 0
-        };
-    }
+    // Get goal values from input fields
+    const goals = {
+        calories: parseFloat(document.getElementById('calories-goal')?.value) || 2000,
+        protein: parseFloat(document.getElementById('protein-goal')?.value) || 50,
+        carbs: parseFloat(document.getElementById('carbs-goal')?.value) || 250,
+        fat: parseFloat(document.getElementById('fat-goal')?.value) || 70
+    };
     
     // Update each progress bar
-    updateProgressBar('calories', totals.calories, goals.calories);
-    updateProgressBar('protein', totals.protein, goals.protein);
-    updateProgressBar('carbs', totals.carbs, goals.carbs);
-    updateProgressBar('fat', totals.fat, goals.fat);
+    updateProgressBar('calories', consumed.calories, goals.calories);
+    updateProgressBar('protein', consumed.protein, goals.protein);
+    updateProgressBar('carbs', consumed.carbs, goals.carbs);
+    updateProgressBar('fat', consumed.fat, goals.fat);
 }
 
 /**
  * Update a single progress bar
  */
 function updateProgressBar(nutrient, consumed, goal) {
-    const progressBar = document.getElementById(`${nutrient}-progress-bar`);
-    const progressText = document.getElementById(`${nutrient}-progress-text`);
+    const progressBar = document.querySelector(`#${nutrient}-progress`);
+    const progressText = document.querySelector(`#${nutrient}-text`);
     
-    if (!progressBar) return;
+    if (!progressBar || !progressText) return;
     
-    // Calculate percentage
+    // Calculate percentage (capped at 100%)
     const percentage = Math.min(Math.round((consumed / goal) * 100), 100) || 0;
     
-    // Update progress bar
+    // Update progress bar width
     progressBar.style.width = `${percentage}%`;
-    progressBar.setAttribute('aria-valuenow', percentage);
     
-    // Update text if available
-    if (progressText) {
-        progressText.textContent = `${consumed} / ${goal} (${percentage}%)`;
-    }
+    // Update text display
+    let unit = nutrient === 'calories' ? 'kcal' : 'g';
+    progressText.textContent = `${Math.round(consumed * 10) / 10} / ${goal} ${unit}`;
     
-    // Update color based on percentage
+    // Update progress bar color based on percentage
     if (percentage < 50) {
-        progressBar.className = 'progress-bar bg-info';
+        progressBar.style.backgroundColor = '#17a2b8'; // info
     } else if (percentage < 75) {
-        progressBar.className = 'progress-bar bg-success';
+        progressBar.style.backgroundColor = '#28a745'; // success
     } else if (percentage < 90) {
-        progressBar.className = 'progress-bar bg-warning';
+        progressBar.style.backgroundColor = '#ffc107'; // warning
     } else {
-        progressBar.className = 'progress-bar bg-danger';
+        progressBar.style.backgroundColor = '#dc3545'; // danger
     }
 }
