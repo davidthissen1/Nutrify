@@ -294,3 +294,55 @@ def food_logs():
             cur.close()
         if conn:
             conn.close()
+
+@food_routes.route('/api/food-logs/<int:log_id>', methods=['DELETE'])
+def delete_food_log(log_id):
+    """Delete a specific food log entry"""
+    # Get token from Authorization header
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Missing or invalid token'}), 401
+    
+    token = auth_header.split(' ')[1]
+    conn = None
+    cur = None
+    
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Get user ID from token
+        cur.execute("""
+            SELECT user_id FROM user_tokens WHERE token = %s
+        """, (token,))
+        
+        result = cur.fetchone()
+        if not result:
+            return jsonify({'error': 'Invalid token'}), 401
+            
+        user_id = result[0]
+        
+        # Delete the food log entry, but only if it belongs to the user
+        cur.execute("""
+            DELETE FROM food_logs 
+            WHERE id = %s AND user_id = %s
+            RETURNING id
+        """, (log_id, user_id))
+        
+        deleted = cur.fetchone()
+        conn.commit()
+        
+        if not deleted:
+            return jsonify({'error': 'Food log entry not found or unauthorized'}), 404
+        
+        return jsonify({'message': 'Food log deleted successfully'}), 200
+        
+    except Exception as e:
+        print(f"Error deleting food log: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()

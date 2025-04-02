@@ -302,11 +302,11 @@ function displayFoodLogs(logs, container) {
     
     let html = '<table class="food-logs-table">';
     html += '<thead><tr>';
-    html += '<th>Food</th><th>Calories</th><th>Protein (g)</th><th>Carbs (g)</th><th>Fat (g)</th><th>Date</th>';
+    html += '<th>Food</th><th>Calories</th><th>Protein (g)</th><th>Carbs (g)</th><th>Fat (g)</th><th>Date</th><th></th>';
     html += '</tr></thead><tbody>';
     
     logs.forEach(log => {
-        // Format the date for display, adjusting for timezone
+        // Format the date for display
         const date = log.log_date ? formatDateForDisplay(log.log_date) : 'N/A';
         
         html += '<tr>';
@@ -316,11 +316,23 @@ function displayFoodLogs(logs, container) {
         html += `<td>${log.carbs_g}</td>`;
         html += `<td>${log.fat_g}</td>`;
         html += `<td>${date}</td>`;
+        html += `<td><button class="delete-log" data-log-id="${log.id}" style="color: red; background: none; border: none; cursor: pointer; font-size: 16px; padding: 0 8px;">&times;</button></td>`;
         html += '</tr>';
     });
     
     html += '</tbody></table>';
     container.innerHTML = html;
+    
+    // Add event listeners for delete buttons
+    const deleteButtons = container.querySelectorAll('.delete-log');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const logId = this.getAttribute('data-log-id');
+            if (confirm('Are you sure you want to delete this food log entry?')) {
+                deleteFoodLog(logId);
+            }
+        });
+    });
     
     // Add totals row and update nutrition tracking
     addTotalsRow(logs, container);
@@ -599,4 +611,37 @@ function updateProgressBar(nutrient, consumed, goal) {
     } else {
         progressBar.style.backgroundColor = '#dc3545'; // danger
     }
+}
+
+/**
+ * Delete a food log entry
+ */
+function deleteFoodLog(logId) {
+    const userToken = localStorage.getItem('userToken');
+    
+    if (!userToken) {
+        showError('You must be logged in to delete food logs');
+        return;
+    }
+    
+    fetch(`/api/food-logs/${logId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': 'Bearer ' + userToken
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to delete food log');
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Refresh the food logs display
+        initFoodLogsDisplay();
+    })
+    .catch(error => {
+        showError('Error deleting food log: ' + error.message);
+        console.error('Delete error:', error);
+    });
 }
