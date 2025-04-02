@@ -306,8 +306,8 @@ function displayFoodLogs(logs, container) {
     html += '</tr></thead><tbody>';
     
     logs.forEach(log => {
-        // Format the date for display
-        const date = log.log_date ? new Date(log.log_date).toLocaleDateString() : 'N/A';
+        // Format the date for display, adjusting for timezone
+        const date = log.log_date ? formatDateForDisplay(log.log_date) : 'N/A';
         
         html += '<tr>';
         html += `<td>${log.food_name}</td>`;
@@ -324,6 +324,16 @@ function displayFoodLogs(logs, container) {
     
     // Add totals row and update nutrition tracking
     addTotalsRow(logs, container);
+}
+
+/**
+ * Format date for display, adjusting for timezone
+ */
+function formatDateForDisplay(dateString) {
+    const date = new Date(dateString);
+    // Add the timezone offset to get the correct local date
+    const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+    return localDate.toLocaleDateString();
 }
 
 /**

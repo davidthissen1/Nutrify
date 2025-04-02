@@ -158,7 +158,7 @@ class GeminiService:
             """
             
             # Use vision-capable model
-            vision_model = genai.GenerativeModel('models/gemini-1.5-pro')
+            vision_model = genai.GenerativeModel('models/gemini-1.5-flash')
             
             # Generate response
             response = vision_model.generate_content([prompt, img])

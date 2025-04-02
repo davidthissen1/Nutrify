@@ -154,7 +154,7 @@ function initImageUpload() {
         formData.append('image', fileInput.files[0]);
         
         // Send the image to the backend for analysis
-        fetch('/api/analyze-image', {
+        fetch('/api/food/analyze-image', {
             method: 'POST',
             body: formData
         })
