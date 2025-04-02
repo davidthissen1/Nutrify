@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Nutrify</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <div class="logo-container">
+                <img src="{{ url_for('static', filename='nutrify_logo.png') }}" alt="Nutrify" class="logo-img">
+                <span class="logo-text">Nutrify</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('food_routes.index') }}">Analyzer</a></li>
+                <li><a href="{{ url_for('food_routes.dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('food_routes.analytics') }}" class="active">Analytics</a></li>
+                <li><a href="{{ url_for('food_routes.account') }}">Account</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Nutrition Analytics</h1>
+        
+        <div class="time-range-selector">
+            <button class="time-btn active" data-range="week">Last Week</button>
+            <button class="time-btn" data-range="month">Last Month</button>
+        </div>
+
+        <div class="graphs-container">
+            <div class="graph-card">
+                <h2>Daily Calories</h2>
+                <canvas id="caloriesChart"></canvas>
+            </div>
+            
+            <div class="graph-card">
+                <h2>Macronutrients Distribution</h2>
+                <canvas id="macrosChart"></canvas>
+            </div>
+            
+            <div class="graph-card">
+                <h2>Protein Intake</h2>
+                <canvas id="proteinChart"></canvas>
+            </div>
+            
+            <div class="graph-card">
+                <h2>Carbs & Fat Intake</h2>
+                <canvas id="carbsFatChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+</body>
+</html> 

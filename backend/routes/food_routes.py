@@ -1,8 +1,55 @@
 from flask import Blueprint, request, jsonify, current_app, render_template
 from backend.services.gemini_service import GeminiService
 import os
+from datetime import datetime, timedelta
+from functools import wraps
 
 food_routes = Blueprint('food_routes', __name__)
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Missing or invalid token'}), 401
+        
+        token = auth_header.split(' ')[1]
+        
+        try:
+            # Get database connection
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            # Get user from token
+            cur.execute("""
+                SELECT users.id, users.username, users.email
+                FROM users
+                JOIN user_tokens ON users.id = user_tokens.user_id
+                WHERE user_tokens.token = %s
+            """, (token,))
+            
+            user = cur.fetchone()
+            if not user:
+                return jsonify({'error': 'Invalid token'}), 401
+                
+            current_user = {
+                'id': user[0],
+                'username': user[1],
+                'email': user[2]
+            }
+            
+            return f(current_user, *args, **kwargs)
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+            
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
+    
+    return decorated
 
 # Simplified routes without database dependencies
 @food_routes.route('/api/food/analyze-text', methods=['POST'])
@@ -90,6 +137,89 @@ def account():
     today = datetime.now().strftime('%Y-%m-%d')
     return render_template('account.html', today=today)
 
+@food_routes.route('/analytics')
+def analytics():
+    return render_template('analytics.html')
+
+@food_routes.route('/api/nutrition-history')
+@token_required
+def get_nutrition_history(current_user):
+    range_param = request.args.get('range', 'week')
+    
+    # Calculate date range
+    end_date = datetime.now()
+    if range_param == 'week':
+        start_date = end_date - timedelta(days=7)
+    else:  # month
+        start_date = end_date - timedelta(days=30)
+    
+    # Query food logs within date range
+    query = """
+        SELECT DATE(date_added) as log_date,
+               SUM(calories) as total_calories,
+               SUM(protein) as total_protein,
+               SUM(carbs) as total_carbs,
+               SUM(fats) as total_fat
+        FROM food_logs
+        WHERE user_id = %s 
+        AND date_added BETWEEN %s AND %s
+        GROUP BY DATE(date_added)
+        ORDER BY log_date ASC
+    """
+    
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute(query, (current_user['id'], start_date, end_date))
+        results = cur.fetchall()
+        
+        # Prepare data for charts
+        dates = []
+        calories = []
+        protein = []
+        carbs = []
+        fat = []
+        
+        # Fill in missing dates with zeros
+        current_date = start_date
+        results_dict = {row[0].strftime('%Y-%m-%d'): row for row in results}
+        
+        while current_date <= end_date:
+            date_str = current_date.strftime('%Y-%m-%d')
+            dates.append(date_str)
+            
+            if date_str in results_dict:
+                row = results_dict[date_str]
+                calories.append(float(row[1]) if row[1] else 0)
+                protein.append(float(row[2]) if row[2] else 0)
+                carbs.append(float(row[3]) if row[3] else 0)
+                fat.append(float(row[4]) if row[4] else 0)
+            else:
+                calories.append(0)
+                protein.append(0)
+                carbs.append(0)
+                fat.append(0)
+            
+            current_date += timedelta(days=1)
+        
+        return jsonify({
+            'dates': dates,
+            'calories': calories,
+            'protein': protein,
+            'carbs': carbs,
+            'fat': fat
+        })
+        
+    except Exception as e:
+        print(f"Error in nutrition history: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
     # Add this route to handle food logging
 
