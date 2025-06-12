@@ -7,3 +7,6 @@ Pillow
 python-dotenv
 pytest
 pytest-flask
+gunicorn
+psycopg2-binary
+google-generativeai

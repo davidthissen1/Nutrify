@@ -13,8 +13,8 @@ class GeminiService:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY is required")
         
-        # Configure the Gemini API
-        genai.configure(api_key=self.api_key)
+        # Configure the Gemini API with REST transport to avoid gRPC connection issues
+        genai.configure(api_key=self.api_key, transport='rest')
     
     def test_api_key(self):
         """Test if the API key is valid by making a simple request"""
@@ -68,10 +68,13 @@ class GeminiService:
             """
             
             # Use text-only model for this request
-            text_model = genai.GenerativeModel('models/gemini-1.5-pro')
+            text_model = genai.GenerativeModel('models/gemini-1.5-flash')
             
             # Generate response from Gemini
             response = text_model.generate_content(prompt)
+            
+            # DEBUG: Print the raw Gemini response
+            print("[DEBUG] Raw Gemini response:", response.text)
             
             # Extract the response text
             response_text = response.text

@@ -7,8 +7,8 @@ API_KEY = "AIzaSyA6OSUVUVZ3XWXvBQgFfYWHVquAoUvcFnw"
 try:
     print(f"Testing API key: {API_KEY[:4]}...{API_KEY[-4:] if len(API_KEY) > 8 else ''}")
     
-    # Configure the Gemini API
-    genai.configure(api_key=API_KEY)
+    # Configure the Gemini API with REST transport to avoid gRPC connection issues
+    genai.configure(api_key=API_KEY, transport='rest')
     
     # Try listing models
     models = genai.list_models()

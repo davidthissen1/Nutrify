@@ -3,6 +3,8 @@ from backend.services.gemini_service import GeminiService
 import os
 from datetime import datetime, timedelta
 from functools import wraps
+import psycopg2
+from backend.config import Config
 
 food_routes = Blueprint('food_routes', __name__)
 
@@ -62,8 +64,8 @@ def analyze_text():
     
     food_description = data['text']
     
-    # Get API key from config
-    api_key = current_app.config.get('GEMINI_API_KEY')
+    # Get API key from environment (consistent with image analysis)
+    api_key = os.environ.get('GEMINI_API_KEY')
     
     # Initialize Gemini service
     try:
@@ -76,6 +78,7 @@ def analyze_text():
             return jsonify({"error": result["error"]}), 500
     
     except Exception as e:
+        print(f"Error analyzing text: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
 
@@ -227,17 +230,17 @@ from flask import request, jsonify
 import os
 import traceback
 
-# Make sure we have a database connection function
 def get_db_connection():
-    """Create and return a connection to the PostgreSQL database."""
-    import psycopg2
-    import os
-    from dotenv import load_dotenv
-    
-    load_dotenv()
-    conn = psycopg2.connect(os.environ.get('DATABASE_URL'))
-    conn.autocommit = True
-    return conn
+    """Get database connection using configuration"""
+    try:
+        params = Config.get_db_connection_params()
+        if 'dsn' in params:
+            return psycopg2.connect(params['dsn'])
+        else:
+            return psycopg2.connect(**params)
+    except Exception as e:
+        print(f"Database connection error: {e}")
+        raise
 
 # Update your food_logs function:
 

@@ -25,8 +25,15 @@ def create_app():
     
     # Test Gemini API key
     print(f"Testing Gemini API key...")
-    gemini_service = GeminiService(api_key)
-    gemini_service.test_api_key()
+    try:
+        gemini_service = GeminiService(api_key)
+        if gemini_service.test_api_key():
+            print("✅ Gemini API key test passed!")
+        else:
+            print("⚠️  Gemini API key test failed, but service may still work with REST transport")
+    except Exception as e:
+        print(f"⚠️  Gemini API key test failed: {str(e)}")
+        print("   This is likely a gRPC connection issue. The service should still work with REST transport.")
     
     # Import and register blueprints
     from .routes.food_routes import food_routes
